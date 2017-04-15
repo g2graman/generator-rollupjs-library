@@ -1,11 +1,11 @@
 'use strict';
 
 const gulp = require('gulp'),
-  util = require('gulp-util'),
-  argv = require('yargs').argv,
+  $ = require('gulp-load-plugins')({
+    config: require('./package.json')
+  }), argv = require('yargs').argv,
   _ = require('lodash'),
   inquirer = require('inquirer');
-
 
     /*install = require('gulp-install'),
     conflict = require('gulp-conflict'),
@@ -16,13 +16,25 @@ const gulp = require('gulp'),
 const Helpers = require('./lib');
 const PROMPTS = require('./prompts/prompts');
 
+gulp.task('pre:rollup', function() {
+  gulp.src(['./templates/**/rollup.config.js'])
+    .pipe($.debug())
+    .pipe($.preprocess({
+      context: {
+        USE_BABEL: false,
+        CODE_COVERAGE: false
+      }
+    }))
+    .pipe(gulp.dest('./dist/'))
+});
+
 gulp.task('default', function (done) {
   let dir = _.get(argv, 'dir') || __dirname;
   let inquiryPrompts = Helpers.convertPrompts(PROMPTS.call(this));
 
   return inquirer.prompt(inquiryPrompts,
     function (answers) {
-      util.log(answers);
+      $.util.log(answers);
       return done();
     }
   );
