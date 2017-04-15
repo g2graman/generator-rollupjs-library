@@ -1,36 +1,65 @@
 'use strict';
 
+const packageJson = require('./package.json');
+
 const gulp = require('gulp'),
   $ = require('gulp-load-plugins')({
-    config: require('./package.json')
+    config: packageJson
   }), argv = require('yargs').argv,
   _ = require('lodash'),
   inquirer = require('inquirer');
 
-    /*install = require('gulp-install'),
-    conflict = require('gulp-conflict'),
-    template = require('gulp-template'),
-    rename = require('gulp-rename'),
-    whichOs = require('which-os');*/
-
 const Helpers = require('./lib');
-const PROMPTS = require('./prompts/prompts');
+const getPrompts = require('./prompts/prompts');
+
+const USE_BABEL = false;
+const CODE_COVERAGE = false;
+const MAKE_TESTS = false;
+const SHOULD_LINT = false;
+
+const OTHER_TEMPLATES = Array.prototype.concat.apply(
+  [], [
+    USE_BABEL
+      ? ['./templates/**/.babelrc']
+      : [],
+    SHOULD_LINT
+      ? ['./templates/**/.eslintrc']
+      : []
+  ]
+);
+
+const ENV_CONTEXT = {
+  USE_BABEL,
+  MAKE_TESTS,
+  CODE_COVERAGE: MAKE_TESTS && CODE_COVERAGE,
+  SHOULD_LINT
+};
+
+console.log(OTHER_TEMPLATES);
 
 gulp.task('pre:rollup', function() {
-  gulp.src(['./templates/**/rollup.config.js'])
-    .pipe($.debug())
+  const packageJsonFilter = $.filter(['**/*/package.json'], {
+    restore: true
+  });
+
+  gulp.src([
+    './templates/**/rollup.config.js',
+    './templates/*/package.json'
+  ].concat(
+    OTHER_TEMPLATES
+  )).pipe($.debug())
+    .pipe(packageJsonFilter)
+    .pipe(Helpers.resolveDependencies(ENV_CONTEXT))
+    .pipe(packageJsonFilter.restore)
     .pipe($.preprocess({
-      context: {
-        USE_BABEL: false,
-        CODE_COVERAGE: false
-      }
+      context: ENV_CONTEXT
     }))
     .pipe(gulp.dest('./dist/'))
 });
 
 gulp.task('default', function (done) {
   let dir = _.get(argv, 'dir') || __dirname;
-  let inquiryPrompts = Helpers.convertPrompts(PROMPTS.call(this));
+  let inquiryPrompts = Helpers.convertPrompts(getPrompts.call(this));
 
   return inquirer.prompt(inquiryPrompts,
     function (answers) {
@@ -38,33 +67,4 @@ gulp.task('default', function (done) {
       return done();
     }
   );
-
-  /*inquirer.prompt(prompts,
-      function (answers) {
-          if (!answers.appName) {
-              console.log('Please provide an App Name to continue');
-              return done();
-          }
-          if (!answers.instanceName) {
-              console.log('We need a Firebase Instance to proceed. Check for more info here: http://goo.gl/Io7fLD');
-              return done();
-          }
-          answers.appNameSlug = _.slugify(answers.appName);
-          answers.appCamelizeName = _.camelize(answers.appName);
-          answers.os = whichOs();
-
-          gulp.src(__dirname + '/templates/!**')
-              .pipe(template(answers))
-              .pipe(rename(function (file) {
-                  if (file.basename.indexOf('_') == 0) {
-                      file.basename = file.basename.replace('_','.');
-                  }
-              }))
-              .pipe(conflict('./'))
-              .pipe(gulp.dest('./'))
-              .pipe(install())
-              .on('end', function () {
-                  done();
-              });
-      });*/
 });
