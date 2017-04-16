@@ -11,8 +11,7 @@ const exec = require('child-process-promise').exec;
 const request = require('request-promise');
 const cheerio = require('cheerio');
 
-const DEFAULT_PROJECT_NAME = path.dirname(__dirname).split(path.sep).pop();
-
+const DEFAULT_PROJECT_NAME = process.cwd().split(path.sep).pop();
 
 const getGlobalGitConfig = function () {
   return exec('git config --global -l')
