@@ -5,31 +5,45 @@ const gulp = require('gulp');
 const _ = require('lodash');
 const Validator = require('validator');
 const EOL = require('os').EOL;
+const Promise = require('bluebird');
 
-const exec = require('child_process').execSync;
+const exec = require('child-process-promise').exec;
 const request = require('request-promise');
 const cheerio = require('cheerio');
 
 const DEFAULT_PROJECT_NAME = path.dirname(__dirname).split(path.sep).pop();
 
-let GlobalGitConfig = _.reduce(
-  _.fromPairs(
-    exec('git config --global -l').toString('utf8')
-      .split(EOL)
-      .filter(Boolean)
-      .map(elem => elem.split('='))
-  ), (acc, value, key) => {
-    _.set(acc, key, value);
-    return acc;
-  }, {}
-);
 
-const DEFAULT_AUTHOR_NAME = _.get(GlobalGitConfig, 'user.name')
-  || process.env.USER
-  || '';
+const getGlobalGitConfig = function () {
+  return exec('git config --global -l')
+    .then(function (gitConfigBuffer) {
 
-const DEFAULT_AUTHOR_EMAIL = _.get(GlobalGitConfig, 'user.email')
-  || '';
+      if (gitConfigBuffer.error) {
+        console.error(gitConfigBuffer.error);
+        throw new Error(gitConfigBuffer.error)
+      }
+
+      return _.reduce(
+        _.fromPairs(
+          gitConfigBuffer.stdout.toString('utf8')
+            .split(EOL)
+            .filter(Boolean)
+            .map(elem => elem.split('='))
+        ), (acc, value, key) => {
+          _.set(acc, key, value);
+          return acc;
+        }, {}
+      );
+    }).then(function (GlobalGitConfig) {
+      return {
+        DEFAULT_AUTHOR_NAME: _.get(GlobalGitConfig, 'user.name')
+          || process.env.USER
+          || '',
+        DEFAULT_AUTHOR_EMAIL: _.get(GlobalGitConfig, 'user.email')
+          || ''
+      }
+    });
+};
 
 const getLicenses = function () {
   return request('https://choosealicense.com/licenses/')
@@ -50,7 +64,7 @@ const getLicenses = function () {
       );
 
       result.push({
-        name: 'No',
+        name: 'No / I\'ll decide later',
         value: false
       });
 
@@ -58,39 +72,44 @@ const getLicenses = function () {
     });
 };
 
-const PROMPTS_UP_TO_LICENSE = {
-  libraryName: {
-    type: 'input',
-    message: 'What is the name of your library? [Optional]',
-    default: _.kebabCase(
+const makeMetaDataPrompts = function (context) {
+  const DEFAULT_AUTHOR_NAME = _.get(context, 'DEFAULT_AUTHOR_NAME');
+  const DEFAULT_AUTHOR_EMAIL = _.get(context, 'DEFAULT_AUTHOR_EMAIL');
+
+  return {
+    libraryName: {
+      type: 'input',
+      message: 'What is the name of your library? [Optional]',
+      default: _.kebabCase(
         DEFAULT_PROJECT_NAME
       )
-  }, authorName: {
-    message: 'What is your name? [Optional] (e.g., John Smith)',
-    default: DEFAULT_AUTHOR_NAME,
-  }, authorWebsite: {
-    message: 'What is the URL of your website? [Optional] (e.g., www.example.com)',
-    validate: (urlCandidate) => (
-      urlCandidate.length === 0
+    }, authorName: {
+      message: 'What is your name? [Optional] (e.g., John Smith)',
+      default: DEFAULT_AUTHOR_NAME,
+    }, authorWebsite: {
+      message: 'What is the URL of your website? [Optional] (e.g., www.example.com)',
+      validate: (urlCandidate) => (
+        urlCandidate.length === 0
         || Validator.isURL(urlCandidate)
       ) ? true
         : 'What you provided was not a website URL'
-  }, authorEmail: {
-    message: 'What is your e-mail address? [Optional] (e.g., contact@example.com)',
-    default: DEFAULT_AUTHOR_EMAIL,
-    validate: (emailCandidate) => (
-      emailCandidate.length === 0
+    }, authorEmail: {
+      message: 'What is your e-mail address? [Optional] (e.g., contact@example.com)',
+      default: DEFAULT_AUTHOR_EMAIL,
+      validate: (emailCandidate) => (
+        emailCandidate.length === 0
         || Validator.isEmail(emailCandidate)
       ) ? true
-      : 'What you provided was not an e-mail'
-  }
+        : 'What you provided was not an e-mail'
+    }
+  };
 };
 
 const PROMPTS_AFTER_LICENSE = {
   makeTests: {
     type: 'list',
     message: 'Would you like to generate tests?',
-    default: false,
+    default: 'ava',
     choices: [{
       name: 'Yes, using ava',
       value: 'ava'
@@ -101,27 +120,72 @@ const PROMPTS_AFTER_LICENSE = {
       name: 'Yes, using mocha (with code coverage using istanbul)',
       value: 'mochaAndistanbul'
     }, {
-      name: 'No',
+      name: 'No / I\'ll decide later',
       value: false
     }]
   }, shouldLint: {
     type: 'confirm',
     message: 'Would you like to set up eslint?',
-    default: false
-  }
+    default: true
+  }, lockDependencies: {
+    type: 'list',
+    message: 'Would you like to lock dependency versions?',
+    default: 'yarn',
+    choices: [{
+      name: 'Yes, using yarn',
+      value: 'yarn'
+    }, {
+      name: 'Yes, using shrinkwrap',
+      value: 'shrinkwrap'
+    }, {
+      name: 'No / I\'ll decide later',
+      value: 'yarn'
+    }]
+  }, downloadPackages: {
+    type: 'confirm',
+    message: 'Would you to start downloading the necessary dependencies now?',
+    default: true
+  },
 };
 
 module.exports = function() {
-  return getLicenses().then(licenseChoices => {
-    return _.merge(PROMPTS_UP_TO_LICENSE, {
-      license: {
-        type: 'list',
-        message: 'Would you like to pick a license (sourced from https://choosealicense.com/licenses/)?',
-        default: false,
-        choices: licenseChoices
+  return Promise.all([
+    getGlobalGitConfig(),
+    getLicenses()
+  ]).then(function (results) {
+    let GlobalGitConfig = results.shift();
+    let licenses = results.shift();
+
+    return {
+      GlobalGitConfig,
+      licenses
+    }
+  }).then(function (context) {
+    return {
+      PROMPTS_UP_TO_LICENSE: makeMetaDataPrompts(
+        _.get(
+          context,
+          'GlobalGitConfig'
+        )
+      ), LICENSE_PROMPTS: {
+        license: {
+          type: 'list',
+          message: 'Would you like to pick a license (sourced from https://choosealicense.com/licenses/)?',
+          default: false,
+          choices: _.get(
+            context,
+            'licenses'
+          )
+        }
       }
-    }, PROMPTS_AFTER_LICENSE);
+    }
+  }).then(function (existingPrompts) {
+    return _.merge.apply(
+      this,
+      _.values(existingPrompts).concat([PROMPTS_AFTER_LICENSE])
+    );
   });
 };
 
+module.exports.getGlobalGitConfig = getGlobalGitConfig;
 module.exports.getLicenses = getLicenses;

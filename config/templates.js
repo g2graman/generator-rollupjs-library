@@ -16,50 +16,39 @@ const ENV_CONTEXT = {
   BUILD_EXAMPLE
 };
 
+const negatePatternsIfFalse = function (flag, patternList) {
+  return !!flag
+    ? patternList
+    : patternList.map(pattern => `!${pattern}`);
+};
+
 const TEMPLATES_TO_EXCLUDE = Array.prototype.concat.apply(
   [], [
-    [
-      (!!_.get(ENV_CONTEXT, 'USE_BABEL')
-        ? ''
-        : '!')
-      + './templates/**/.babelrc',
-      (!!_.get(ENV_CONTEXT, 'USE_BABEL')
-        ? ''
-        : '!')
-      + './templates/**/*babel*'
-    ], [
-      (!!_.get(ENV_CONTEXT, 'SHOULD_LINT')
-        ? ''
-        : '!')
-      + './templates/**/.eslintrc',
-      (!!_.get(ENV_CONTEXT, 'SHOULD_LINT')
-        ? ''
-        : '!')
-      + './templates/**/*eslint*'
-    ], [
-      (!!_.get(ENV_CONTEXT, 'MAKE_TESTS')
-        ? ''
-        : '!')
-      + './templates/**/*mocha*',
-      (!!_.get(ENV_CONTEXT, 'MAKE_TESTS')
-        ? ''
-        : '!')
-      + './templates/**/*test*',
-    ], [
-      (!!_.get(ENV_CONTEXT, 'CODE_COVERAGE')
-        ? ''
-        : '!')
-      + './templates/**/*istanbul*'
-    ], [
-      (!!_.get(ENV_CONTEXT, 'BUILD_EXAMPLE')
-        ? ''
-        : '!')
-      + './templates/**/*lib*',
-      (!!_.get(ENV_CONTEXT, 'BUILD_EXAMPLE')
-        ? ''
-        : '!')
-      + './templates/**/lib/**/*'
-    ]
+    negatePatternsIfFalse(
+      !!_.get(ENV_CONTEXT, 'USE_BABEL'), [
+        './templates/**/.babelrc',
+        './templates/**/*babel*'
+      ]
+    ), negatePatternsIfFalse(
+      !!_.get(ENV_CONTEXT, 'SHOULD_LINT'), [
+        './templates/**/.eslintrc',
+        './templates/**/*eslint*'
+      ]
+    ), negatePatternsIfFalse(
+      !!_.get(ENV_CONTEXT, 'MAKE_TESTS'), [
+        './templates/**/*mocha*',
+        './templates/**/*test*'
+      ]
+    ), negatePatternsIfFalse(
+      !!_.get(ENV_CONTEXT, 'CODE_COVERAGE'), [
+        './templates/**/*istanbul*',
+      ]
+    ), negatePatternsIfFalse(
+      !!_.get(ENV_CONTEXT, 'BUILD_EXAMPLE'), [
+        './templates/**/*lib*',
+        './templates/**/lib/**/*'
+      ]
+    )
 ]);
 
 module.exports = {
