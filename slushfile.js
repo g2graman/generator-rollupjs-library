@@ -10,47 +10,51 @@ const gulp = require('gulp'),
   inquirer = require('inquirer'),
   del = require('del');
 
-const TemplateConfig = require('./config/templates');
+let dir = _.get(argv, 'dir') || './dist';
+let AnswersCache = {};
+
+const getTemplateConfig = require('./config/templates');
 const Helpers = require('./lib/templates');
 const getPrompts = require('./config/prompts');
 
 gulp.task('clean:rollup', function (done) {
   return del([
-    './dist/'
+    dir
   ], done);
 });
 
 gulp.task('clean', ['clean:rollup']);
 
-gulp.task('pre:rollup', function() {
+gulp.task('pre:rollup', function () {
+
   const packageJsonFilter = $.filter(['**/*/package.json'], {
     restore: true
   });
 
+  let TemplateConfig = getTemplateConfig(AnswersCache);
+  console.log(TemplateConfig);
+
   return gulp.src([
     './templates/**/*',
-    './templates/**/\.*',
-    '!./templates/**/\.git'
+    './templates/**/\.*', // include all 'hidden' files that start with a '.'
+    '!./templates/**/\.git' //exclude git
   ].concat(
-    TemplateConfig.TEMPLATES_TO_EXCLUDE
+    TemplateConfig.SOURCE_TEMPLATES_PATTERNS
   )).pipe(packageJsonFilter)
-    .pipe(Helpers.resolveDependencies(TemplateConfig.ENV_CONTEXT))
+    .pipe(Helpers.resolvePackageDependencies(TemplateConfig.ENV_CONTEXT))
     .pipe(packageJsonFilter.restore)
     .pipe($.preprocess({
       context: TemplateConfig.ENV_CONTEXT
     }))
-    .pipe(gulp.dest('./dist/'));
+    .pipe(gulp.dest(dir));
 });
 
 gulp.task('default', ['clean'], function () {
-  let dir = _.get(argv, 'dir') || __dirname;
-
   return getPrompts.call(this).then(PROMPTS => {
     let inquiryPrompts = Helpers.convertPrompts(PROMPTS);
 
     return inquirer.prompt(inquiryPrompts).then(function (answers) {
-      $.util.log('Answers: ' + JSON.stringify(answers));
-
+      AnswersCache = _.assign(AnswersCache, answers);
       return gulp.start('pre:rollup');
     });
   })

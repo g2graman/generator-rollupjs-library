@@ -11,6 +11,8 @@ const exec = require('child-process-promise').exec;
 const request = require('request-promise');
 const cheerio = require('cheerio');
 
+const TOKENS = require('./templates').TOKENS;
+
 const DEFAULT_PROJECT_NAME = process.cwd().split(path.sep).pop();
 
 const getGlobalGitConfig = function () {
@@ -108,16 +110,19 @@ const PROMPTS_AFTER_LICENSE = {
   makeTests: {
     type: 'list',
     message: 'Would you like to generate tests?',
-    default: 'ava',
+    default: TOKENS.AVA_WITH_CODE_COVERAGE_TOKEN,
     choices: [{
       name: 'Yes, using ava',
-      value: 'ava'
+      value: TOKENS.AVA_TOKEN
+    }, {
+      name: 'Yes, using ava (with code coverage using nyc)',
+      value: TOKENS.AVA_WITH_CODE_COVERAGE_TOKEN
     }, {
       name: 'Yes, using mocha',
-      value: 'mocha'
+      value: TOKENS.MOCHA_TOKEN
     }, {
       name: 'Yes, using mocha (with code coverage using istanbul)',
-      value: 'mochaAndistanbul'
+      value: TOKENS.MOCHA_WITH_CODE_COVERAGE_TOKEN
     }, {
       name: 'No / I\'ll decide later',
       value: false
@@ -126,23 +131,31 @@ const PROMPTS_AFTER_LICENSE = {
     type: 'confirm',
     message: 'Would you like to set up eslint?',
     default: true
+  }, useBabel: {
+    type: 'confirm',
+    message: 'Would you like to use babel?',
+    default: true
+  }, useExample: {
+    type: 'confirm',
+    message: 'Would you like to start with an example library?',
+    default: true
   }, lockDependencies: {
     type: 'list',
     message: 'Would you like to lock dependency versions?',
-    default: 'yarn',
+    default: TOKENS.YARN_TOKEN,
     choices: [{
       name: 'Yes, using yarn',
-      value: 'yarn'
+      value: TOKENS.YARN_TOKEN
     }, {
       name: 'Yes, using shrinkwrap',
-      value: 'shrinkwrap'
+      value: TOKENS.NPM_SHRINKWRAP_TOKEN
     }, {
       name: 'No / I\'ll decide later',
-      value: 'yarn'
+      value: false
     }]
   }, downloadPackages: {
     type: 'confirm',
-    message: 'Would you to start downloading the necessary dependencies now?',
+    message: 'Would you like to start downloading the necessary dependencies now?',
     default: true
   },
 };
