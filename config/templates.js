@@ -56,6 +56,7 @@ module.exports = function (answers) {
       ), negatePatternsIfFalse(
         _.get(ENV_CONTEXT, 'NYC_CODE_COVERAGE'), [
           './templates/**/*nyc*',
+          './templates/**/\.nycrc',
         ]
       ), negatePatternsIfFalse(
           !!_.get(ENV_CONTEXT, 'BUILD_EXAMPLE'), [
