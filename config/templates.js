@@ -103,7 +103,6 @@ module.exports = function (answers) {
       }, ENV_CONTEXT
     ), {
       SOURCE_TEMPLATES_PATTERNS,
-      SOURCE_TEMPLATES_PATTERNS,
       PACKAGE_TEMPLATE_RESOLVER_MAP
     }
   )

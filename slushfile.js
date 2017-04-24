@@ -14,7 +14,8 @@ let dir = _.get(argv, 'dir') || './dist';
 let AnswersCache = {};
 
 const getTemplateConfig = require('./config/templates');
-const Helpers = require('./lib/templates');
+const TemplateHelpers = require('./lib/templates');
+const PromptsHelpers = require('./lib/prompts');
 const getPrompts = require('./config/prompts');
 
 gulp.task('clean:rollup', function (done) {
@@ -41,7 +42,7 @@ gulp.task('pre:rollup', function () {
   ].concat(
     TemplateConfig.SOURCE_TEMPLATES_PATTERNS
   )).pipe(packageJsonFilter)
-    .pipe(Helpers.resolvePackageDependencies(TemplateConfig.ENV_CONTEXT))
+    .pipe(TemplateHelpers.resolvePackageDependencies(TemplateConfig.ENV_CONTEXT))
     .pipe(packageJsonFilter.restore)
     .pipe($.preprocess({
       context: TemplateConfig.ENV_CONTEXT
@@ -51,11 +52,12 @@ gulp.task('pre:rollup', function () {
 
 gulp.task('default', ['clean'], function () {
   return getPrompts.call(this).then(PROMPTS => {
-    let inquiryPrompts = Helpers.convertPrompts(PROMPTS);
+    let inquiryPrompts = PromptsHelpers.convertPrompts(PROMPTS);
 
     return inquirer.prompt(inquiryPrompts).then(function (answers) {
       AnswersCache = _.assign(AnswersCache, answers);
       return gulp.start('pre:rollup');
     });
+
   })
 });
