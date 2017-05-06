@@ -18,61 +18,77 @@ const negatePatternsIfFalse = function (flag, patternList) {
 module.exports = function (answers) {
   const ENV_CONTEXT = {
     USE_BABEL: _.get(answers, 'useBabel'),
+
     ISTANBUL_CODE_COVERAGE: _.get(answers, 'makeTests') === MOCHA_WITH_CODE_COVERAGE_TOKEN,
+    USE_AVA: _.get(answers, 'makeTests') === AVA_WITH_CODE_COVERAGE_TOKEN
+      || _.get(answers, 'makeTests') === AVA_TOKEN,
+    USE_MOCHA: _.get(answers, 'makeTests') === MOCHA_WITH_CODE_COVERAGE_TOKEN
+      || _.get(answers, 'makeTests') === MOCHA_TOKEN,
     NYC_CODE_COVERAGE: _.get(answers, 'makeTests') === AVA_WITH_CODE_COVERAGE_TOKEN,
     MAKE_TESTS: !!_.get(answers, 'makeTests'),
+
     SHOULD_LINT: !!_.get(answers, 'shouldLint'),
+
     BUILD_EXAMPLE: !!_.get(answers, 'useExample'),
+
     LOCK_DEPENDENCIES: !!_.get(answers, 'lockDependencies'),
     LOCK_DEPENDENCIES_SHRINKWRAP: _.get(answers, 'lockDependencies') === NPM_SHRINKWRAP_TOKEN,
-    LOCK_DEPENDENCIES_YARN: _.get(answers, 'lockDependencies') === YARN_TOKEN
+    LOCK_DEPENDENCIES_YARN: _.get(answers, 'lockDependencies') === YARN_TOKEN,
+
+    USE_NPM: !_.get(answers, 'lockDependencies')
+      || _.get(answers, 'lockDependencies') !== YARN_TOKEN
   };
 
   const SOURCE_TEMPLATES_PATTERNS = Array.prototype.concat.apply(
     [], [
       negatePatternsIfFalse(
-          !!_.get(ENV_CONTEXT, 'USE_BABEL'), [
-            './templates/**/.babelrc',
-            './templates/**/*babel*'
-          ]
+        !!_.get(ENV_CONTEXT, 'USE_BABEL'), [
+          './templates/**/.babelrc',
+          './templates/**/*babel*'
+        ]
       ), negatePatternsIfFalse(
-          !!_.get(ENV_CONTEXT, 'SHOULD_LINT'), [
-            './templates/**/.eslintrc',
-            './templates/**/*eslint*'
-          ]
+        !!_.get(ENV_CONTEXT, 'SHOULD_LINT'), [
+          './templates/**/.eslintrc',
+          './templates/**/*eslint*'
+        ]
       ), negatePatternsIfFalse(
-          !!_.get(ENV_CONTEXT, 'MAKE_TESTS'), [
-            './templates/**/*test*'
-          ]
+        !!_.get(ENV_CONTEXT, 'MAKE_TESTS'), [
+          './templates/**/*test*',
+          './templates/**/test(s)?'
+        ]
       ), negatePatternsIfFalse(
-          _.get(ENV_CONTEXT, 'MAKE_TESTS') === MOCHA_TOKEN ||
-            _.get(ENV_CONTEXT, 'MAKE_TESTS') === MOCHA_WITH_CODE_COVERAGE_TOKEN, [
-              './templates/**/*mocha*',
-            ]
+        !!_.get(ENV_CONTEXT, 'USE_MOCHA'),  [
+            './templates/**/*mocha*',
+            './templates/**/test/*mocha*/**/*',
+        ]
       ), negatePatternsIfFalse(
-          _.get(ENV_CONTEXT, 'ISTANBUL_CODE_COVERAGE'), [
-            './templates/**/*istanbul*',
-          ]
+        !!_.get(ENV_CONTEXT, 'USE_AVA'),  [
+          './templates/**/*ava*',
+          './templates/**/test/*ava*/**/*',
+        ]
+      ), negatePatternsIfFalse(
+        _.get(ENV_CONTEXT, 'ISTANBUL_CODE_COVERAGE'), [
+          './templates/**/*istanbul*',
+        ]
       ), negatePatternsIfFalse(
         _.get(ENV_CONTEXT, 'NYC_CODE_COVERAGE'), [
           './templates/**/*nyc*',
           './templates/**/\.nycrc',
         ]
       ), negatePatternsIfFalse(
-          !!_.get(ENV_CONTEXT, 'BUILD_EXAMPLE'), [
-            './templates/**/*lib*',
-            './templates/**/lib/**/*'
-          ]
+        !!_.get(ENV_CONTEXT, 'BUILD_EXAMPLE'), [
+          './templates/**/*lib*/**/*'
+        ]
       ), negatePatternsIfFalse(
-          !!_.get(ENV_CONTEXT, 'LOCK_DEPENDENCIES') &&
-            _.get(ENV_CONTEXT, 'LOCK_DEPENDENCIES_YARN'), [
-              './templates/**/*yarn.lock*'
-            ]
+        !!_.get(ENV_CONTEXT, 'LOCK_DEPENDENCIES') &&
+          _.get(ENV_CONTEXT, 'LOCK_DEPENDENCIES_YARN'), [
+            './templates/**/*yarn.lock*'
+        ]
       ), negatePatternsIfFalse(
-          !!_.get(ENV_CONTEXT, 'LOCK_DEPENDENCIES') &&
-            _.get(ENV_CONTEXT, 'LOCK_DEPENDENCIES_SHRINKWRAP'), [
-              './templates/**/*npm-shrinkwrap*'
-            ]
+        !!_.get(ENV_CONTEXT, 'LOCK_DEPENDENCIES') &&
+          _.get(ENV_CONTEXT, 'LOCK_DEPENDENCIES_SHRINKWRAP'), [
+            './templates/**/*npm-shrinkwrap*'
+        ]
       )
     ]);
 

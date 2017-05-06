@@ -8,7 +8,8 @@ const gulp = require('gulp'),
   }), argv = require('yargs').argv,
   _ = require('lodash'),
   inquirer = require('inquirer'),
-  del = require('del');
+  del = require('del'),
+  path = require('path');
 
 let dir = _.get(argv, 'dir') || './dist';
 let AnswersCache = {};
@@ -28,26 +29,47 @@ gulp.task('clean', ['clean:rollup']);
 
 gulp.task('pre:rollup', function () {
 
-  const packageJsonFilter = $.filter(['**/*/package.json'], {
+  const packageJsonFilter = $.filter([
+    '**/*/package.json'
+  ], {
     restore: true
   });
 
   let TemplateConfig = getTemplateConfig(AnswersCache);
-  console.log(TemplateConfig);
 
   return gulp.src([
     './templates/**/*',
-    './templates/**/\.*', // include all 'hidden' files that start with a '.'
-    '!./templates/**/\.git' //exclude git
+    './templates/**/\.*',
+
+    '!./templates/**/\.git', //exclude git
+    '!./templates/**/node_modules',
+    '!./templates/**/node_modules/**/*',
+    '!./templates/**/node_modules/**/\.*',
   ].concat(
     TemplateConfig.SOURCE_TEMPLATES_PATTERNS
-  )).pipe(packageJsonFilter)
+  )).pipe($.debug())
+    .pipe(packageJsonFilter)
     .pipe(TemplateHelpers.resolvePackageDependencies(TemplateConfig.ENV_CONTEXT))
     .pipe(packageJsonFilter.restore)
     .pipe($.preprocess({
       context: TemplateConfig.ENV_CONTEXT
-    }))
-    .pipe(gulp.dest(dir));
+    })).pipe(gulp.dest(dir));
+});
+
+gulp.task('deps:download:rollup', ['pre:rollup'], function () {
+  let TemplateConfig = getTemplateConfig(AnswersCache);
+
+  return gulp.src([
+    path.resolve('.', dir, '**', 'package.json'),
+    path.resolve('.', dir, '**', 'yarn.lock'),
+    path.resolve('.', dir, '**', 'npm-shrinkwrap.json'),
+    `!${path.resolve('.', dir, '**', 'node_modules')}`,
+    `!${path.resolve('.', dir, '**', 'node_modules', '**', '*')}`
+  ]).pipe($.if(
+    !!_.get(TemplateConfig, 'ENV_CONTEXT.USE_NPM'),
+    $.install(),
+    $.yarn()
+  )).pipe(gulp.dest(dir));
 });
 
 gulp.task('default', ['clean'], function () {
@@ -56,8 +78,12 @@ gulp.task('default', ['clean'], function () {
 
     return inquirer.prompt(inquiryPrompts).then(function (answers) {
       AnswersCache = _.assign(AnswersCache, answers);
-      return gulp.start('pre:rollup');
-    });
 
-  })
+      if (!!_.get(AnswersCache, 'downloadPackages')) {
+        return gulp.start('deps:download:rollup');
+      } else {
+        return gulp.start('pre:rollup');
+      }
+    });
+  });
 });
