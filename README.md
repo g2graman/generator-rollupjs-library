@@ -11,7 +11,7 @@ This generator is being built with the intent of being used with the [`slush` CL
 
 ##### Features
 - Getting a (dynamic) list of open source licenses to choose from (from [_choosealicense_](https://choosealicense.com/licenses/))
--- Right now the choice of license is inconsequential to the generator, but after reaching out to Brian Donovan, the scaffolding can possibly include a full copy of the chosen license.
+-- Right now the choice of license is inconsequential to the generator.
 - Basic tests with Mocha / Ava
 - Code Coverage (with either nyc or istanbul, based on whether you choose Mocha or Ava)
 - Ability to download dependencies through the generator with `yarn` or `npm`
