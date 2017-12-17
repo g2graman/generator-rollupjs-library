@@ -23,3 +23,4 @@ This generator is being built with the intent of being used with the [`slush` CL
 - [Possible] TypeScript support, depending on demand
 
 ##### LICENSE
+MIT
