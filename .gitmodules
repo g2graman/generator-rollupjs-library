@@ -1,4 +1,4 @@
 [submodule "templates/rollup-starter"]
 	path = templates/rollup-starter
 	url = https://github.com/g2graman/rollup-starter-template
-	branch = wip/template
+	branch = master
