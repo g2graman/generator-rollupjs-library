@@ -1,21 +1,47 @@
 'use strict';
 
-const path = require('path');
-const gulp = require('gulp');
-const _ = require('lodash');
-const Validator = require('validator');
-const EOL = require('os').EOL;
-const Promise = require('bluebird');
+/// <reference path="../../node_modules/@types/node/index.d.ts" />
 
-const exec = require('child-process-promise').exec;
-const request = require('request-promise');
-const cheerio = require('cheerio');
+import * as path from 'path';
+// import * as gulp from 'gulp';
 
-const TOKENS = require('./templates').TOKENS;
+import {
+  reduce,
+  fromPairs,
+  set,
+  get,
+  upperCase,
+  kebabCase,
+  map,
+  merge,
+  values
+} from 'lodash';
 
-const DEFAULT_PROJECT_NAME = process.cwd().split(path.sep).pop();
+import * as Validator from 'validator';
+import { EOL } from 'os';
+import * as Promise from 'bluebird';
 
-const getGlobalGitConfig = function () {
+import { exec } from 'child-process-promise';
+import * as request from 'request-promise';
+import * as cheerio from 'cheerio';
+
+import { TOKENS } from '../tokens';
+
+import {
+  default as inquirer,
+  Prompts
+} from "inquirer";
+
+import Choice = inquirer.objects.Choice;
+
+
+
+const DEFAULT_PROJECT_NAME: string = process
+  .cwd()
+  .split(path.sep)
+  .pop();
+
+const getGlobalGitConfig = function (): PromiseLike {
   return exec('git config --global -l')
     .then(function (gitConfigBuffer) {
 
@@ -24,42 +50,46 @@ const getGlobalGitConfig = function () {
         throw new Error(gitConfigBuffer.error)
       }
 
-      return _.reduce(
-        _.fromPairs(
+      return reduce(
+        fromPairs(
           gitConfigBuffer.stdout.toString('utf8')
             .split(EOL)
             .filter(Boolean)
             .map(elem => elem.split('='))
         ), (acc, value, key) => {
-          _.set(acc, key, value);
+          set(acc, key, value);
           return acc;
         }, {}
       );
     }).then(function (GlobalGitConfig) {
       return {
-        DEFAULT_AUTHOR_NAME: _.get(GlobalGitConfig, 'user.name')
-          || process.env.USER
-          || '',
-        DEFAULT_AUTHOR_EMAIL: _.get(GlobalGitConfig, 'user.email')
-          || ''
+        DEFAULT_AUTHOR_NAME: get(
+          GlobalGitConfig,
+          'user.name',
+          process.env.USER || ''
+        ),
+        DEFAULT_AUTHOR_EMAIL: get(GlobalGitConfig, 'user.email', '')
       }
     });
 };
 
-const getLicenses = function () {
+const getLicenses = function (): Promise<Choice[]> {
   return request('https://choosealicense.com/licenses/')
     .then(htmlLicenses => {
       let $ = cheerio.load(htmlLicenses, {
         normalizeWhitespace: true,
       });
 
-      let result = _.map(
+      let result: Choice[] = map(
         $('div.license-overview'),
         (elem) => {
-          let license = _.get(elem, 'attribs.id');
+          let license = get(elem, 'attribs.id');
+
           return {
-            name: `Yes, ${license}`,
-            value: _.upperCase(license).split(' ').join('-')
+            name: license
+              ? `Yes, ${license}`
+              : null,
+            value: upperCase(license).split(' ').join('-')
           };
         }
       );
@@ -69,19 +99,27 @@ const getLicenses = function () {
         value: false
       });
 
-      return result;
+      return result.filter(choice => Boolean(choice.name));
     });
 };
 
-const makeMetaDataPrompts = function (context) {
-  const DEFAULT_AUTHOR_NAME = _.get(context, 'DEFAULT_AUTHOR_NAME');
-  const DEFAULT_AUTHOR_EMAIL = _.get(context, 'DEFAULT_AUTHOR_EMAIL');
+export enum PromptType {
+  LIST = 'list',
+  CONFIRM = 'confirm',
+  INPUT = 'input',
+  RAWLIST = 'rawlist',
+  PASSWORD = 'password'
+}
+
+const makeMetaDataPrompts = function (context): Prompts {
+  const DEFAULT_AUTHOR_NAME = get(context, 'DEFAULT_AUTHOR_NAME', null);
+  const DEFAULT_AUTHOR_EMAIL = get(context, 'DEFAULT_AUTHOR_EMAIL', null);
 
   return {
     libraryName: {
-      type: 'input',
+      type: PromptType.INPUT,
       message: 'What is the name of your library? [Optional]',
-      default: _.kebabCase(
+      default: kebabCase(
         DEFAULT_PROJECT_NAME
       )
     }, authorName: {
@@ -106,9 +144,9 @@ const makeMetaDataPrompts = function (context) {
   };
 };
 
-const PROMPTS_AFTER_LICENSE = {
+const PROMPTS_AFTER_LICENSE: Prompts = {
   makeTests: {
-    type: 'list',
+    type: PromptType.LIST,
     message: 'Would you like to generate tests?',
     default: TOKENS.AVA_WITH_CODE_COVERAGE_TOKEN,
     choices: [{
@@ -128,19 +166,19 @@ const PROMPTS_AFTER_LICENSE = {
       value: false
     }]
   }, shouldLint: {
-    type: 'confirm',
+    type: PromptType.CONFIRM,
     message: 'Would you like to set up eslint?',
     default: true
   }, useBabel: {
-    type: 'confirm',
+    type: PromptType.CONFIRM,
     message: 'Would you like to use babel?',
     default: true
   }, useExample: {
-    type: 'confirm',
+    type: PromptType.CONFIRM,
     message: 'Would you like to start with an example library?',
     default: true
   }, lockDependencies: {
-    type: 'list',
+    type: PromptType.LIST,
     message: 'Would you like to lock dependency versions?',
     default: TOKENS.YARN_TOKEN,
     choices: [{
@@ -154,50 +192,56 @@ const PROMPTS_AFTER_LICENSE = {
       value: false
     }]
   }, downloadPackages: {
-    type: 'confirm',
+    type: PromptType.CONFIRM,
     message: 'Would you like to start downloading the necessary dependencies now?',
     default: true
   },
 };
 
-module.exports = function() {
+export default function (): PromiseLike {
   return Promise.all([
     getGlobalGitConfig(),
     getLicenses()
   ]).then(function (results) {
-    let GlobalGitConfig = results.shift();
-    let licenses = results.shift();
+    let [
+      GlobalGitConfig,
+      licenses
+    ] = results;
 
     return {
       GlobalGitConfig,
       licenses
-    }
+    };
   }).then(function (context) {
-    return {
-      PROMPTS_UP_TO_LICENSE: makeMetaDataPrompts(
-        _.get(
+    return <{[key: string]: Prompts}> {
+      PROMPTS_UP_TO_LICENSE: <Prompts> makeMetaDataPrompts(
+        get(
           context,
-          'GlobalGitConfig'
+          'GlobalGitConfig',
+          {}
         )
       ), LICENSE_PROMPTS: {
         license: {
-          type: 'list',
+          type: PromptType.LIST,
           message: 'Would you like to pick a license (sourced from https://choosealicense.com/licenses/)?',
           default: false,
-          choices: _.get(
+          choices: get(
             context,
-            'licenses'
+            'licenses',
+            []
           )
         }
       }
     }
-  }).then(function (existingPrompts) {
-    return _.merge.apply(
+  }).then(function (existingPrompts: {[key: string]: Prompts}): Prompts {
+    return merge.apply(
       this,
-      _.values(existingPrompts).concat([PROMPTS_AFTER_LICENSE])
+      values(existingPrompts).concat([PROMPTS_AFTER_LICENSE])
     );
   });
 };
 
-module.exports.getGlobalGitConfig = getGlobalGitConfig;
-module.exports.getLicenses = getLicenses;
+export {
+  getGlobalGitConfig,
+  getLicenses,
+};

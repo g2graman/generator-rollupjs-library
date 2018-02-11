@@ -14,10 +14,10 @@ const gulp = require('gulp'),
 let dir = _.get(argv, 'dir') || './dist';
 let AnswersCache = {};
 
-const getTemplateConfig = require('./config/templates');
+const getTemplateConfig = require('./config/templates/templates').default;
 const TemplateHelpers = require('./lib/templates');
 const PromptsHelpers = require('./lib/prompts');
-const getPrompts = require('./config/prompts');
+const getPrompts = require('./config/prompts/prompts').default;
 
 gulp.task('clean:rollup', function (done) {
   return del([
