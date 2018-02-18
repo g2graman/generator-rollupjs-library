@@ -12,6 +12,7 @@
     "@types/node": "^9.4.0",
     "@types/request": "^2.47.0",
     "@types/request-promise": "^4.1.41",
+    "@types/through2": "^2.0.33",
     "@types/validator": "^6.3.0",
     "bluebird": "^3.5.0",
     "cheerio": "^0.22.0",
@@ -38,7 +39,7 @@
     "yargs": "^7.1.0"
   },
   "scripts": {
-    "start": "node --require ts-node/register node_modules/.bin/gulp --gulpfile=./slushfile.js"
+    "start": "node --require ts-node/register node_modules/.bin/gulp --gulpfile=./slushfile.ts"
   },
   "devDependencies": {
     "gulp-debug": "^3.1.0",

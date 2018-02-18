@@ -7,7 +7,7 @@ generator-rollupjs-library
 This generator is being built with the intent of being used with the [`slush` CLI](https://slushjs.github.io/#/), and is currently very much a **work in progress**.
 
 **Note**: It is currently untested as a slush-specific generator. Instead, for ease of development, to currently use it you should use
-```gulp --gulpfile=./slushfile.js --dir=<destination>``` where `<destination>` is a directory where you'd like to find its output.
+```node --require ts-node/register node_modules/.bin/gulp --gulpfile=./slushfile.ts --dir=<destination>``` where `<destination>` is a directory where you'd like to find its output.
 
 ##### Features
 - Getting a (dynamic) list of open source licenses to choose from (from [_choosealicense_](https://choosealicense.com/licenses/))

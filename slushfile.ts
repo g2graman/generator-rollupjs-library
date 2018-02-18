@@ -6,12 +6,12 @@ const gulp = require('gulp'),
   $ = require('gulp-load-plugins')({
     config: packageJson
   }), argv = require('yargs').argv,
-  _ = require('lodash'),
+  { get, assign } = require('lodash'),
   inquirer = require('inquirer'),
   del = require('del'),
   path = require('path');
 
-let dir = _.get(argv, 'dir') || './dist';
+let dir = get(argv, 'dir') || './dist';
 let AnswersCache = {};
 
 const getTemplateConfig = require('./config/templates/templates').default;
@@ -25,7 +25,7 @@ gulp.task('clean:rollup', function (done) {
   ], done);
 });
 
-gulp.task('clean', ['clean:rollup']);
+gulp.task('clean', ['clean:rollup'], null);
 
 gulp.task('pre:rollup', function () {
 
@@ -66,7 +66,7 @@ gulp.task('deps:download:rollup', ['pre:rollup'], function () {
     `!${path.resolve('.', dir, '**', 'node_modules')}`,
     `!${path.resolve('.', dir, '**', 'node_modules', '**', '*')}`
   ]).pipe($.if(
-    !!_.get(TemplateConfig, 'ENV_CONTEXT.USE_NPM'),
+    !!get(TemplateConfig, 'ENV_CONTEXT.LOCK_DEPENDENCIES_SHRINKWRAP_FLAG'),
     $.install(),
     $.yarn()
   )).pipe(gulp.dest(dir));
@@ -77,9 +77,9 @@ gulp.task('default', ['clean'], function () {
     let inquiryPrompts = PromptsHelpers.convertPrompts(PROMPTS);
 
     return inquirer.prompt(inquiryPrompts).then(function (answers) {
-      AnswersCache = _.assign(AnswersCache, answers);
+      AnswersCache = assign(AnswersCache, answers);
 
-      if (!!_.get(AnswersCache, 'downloadPackages')) {
+      if (!!get(AnswersCache, 'downloadPackages')) {
         return gulp.start('deps:download:rollup');
       } else {
         return gulp.start('pre:rollup');

@@ -1,5 +1,5 @@
 import { camelCase } from 'lodash';
-import { FLAGS } from "./flags";
+import { FLAGS } from "../../config/env/flags";
 
 const getEnvPathFromFlag = camelCase;
 

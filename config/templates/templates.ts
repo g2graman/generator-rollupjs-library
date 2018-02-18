@@ -1,7 +1,7 @@
 'use strict';
 
-import { getEnvContextFromAnswers } from '../env/context';
-import { getSourceTemplatePatterns } from './patterns';
+import { getEnvContextFromAnswers } from '../../lib/env/context';
+import { getSourceTemplatePatterns } from '../../lib/env/flags';
 import { FLAG_MAP } from './flagMap';
 
 export default function (answers) {
@@ -11,6 +11,7 @@ export default function (answers) {
   return {
     ENV_CONTEXT,
     ...ENV_CONTEXT,
+
     SOURCE_TEMPLATES_PATTERNS,
     FLAG_MAP,
   };
